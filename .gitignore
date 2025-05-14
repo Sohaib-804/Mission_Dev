@@ -1,5 +1,7 @@
 # Dependencies
-/node_modules
+# Ignore all node_modules folders (any depth)
+**/node_modules/
+
 /.pnp
 .pnp.js
 

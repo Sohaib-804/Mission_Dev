@@ -1,91 +1,135 @@
-// Update the Overview component to fetch and display user skills and challenges
  import React from "react"
-import { useState, useEffect } from "react"
-import { Clock, Plus, X, ChevronRight, Circle, CheckCircle, Video, FileText } from "lucide-react"
+ import { useState, useEffect } from "react"
+import { Clock, Plus, ChevronRight, Circle, CheckCircle, Video, FileText } from "lucide-react"
 import axios from "axios"
+import { useNavigate } from "react-router-dom"
 import Footer from "../components/Footer"
+import IntroductionModal from "../components/introductionModal"
+import SkillsModal from "../components/SkillsModal"
+
+// API base URL - adjust this to match your backend
+const API_BASE_URL = "http://localhost:5000/api"
 
 const Overview = ({ userName = "", userRole = "" }) => {
   // State for checklist items
   const [checklist, setChecklist] = useState([
     { id: 1, text: "Complete at least 1 code challenge", completed: false },
-    { id: 2, text: "Submit your video interview", completed: false },
+    { id: 2, text: "Submit your introduction video", completed: false },
     { id: 3, text: "Complete your profile", completed: false },
   ])
 
   // State for modals
   const [showSkillsModal, setShowSkillsModal] = useState(false)
-  const [showInterviewModal, setShowInterviewModal] = useState(false)
+  const [showIntroductionModal, setShowIntroductionModal] = useState(false)
   const [skills, setSkills] = useState([])
-  const [currentSkill, setCurrentSkill] = useState("")
   const [challenges, setChallenges] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [introductionCompleted, setIntroductionCompleted] = useState(false)
+  const [userData, setUserData] = useState(null)
+  const navigate = useNavigate()
 
   // Get first name from full name or use a default
-  const displayName = userName ? userName.split(" ")[0] : "there"
+  const displayName = userName ? userName.split(" ")[0] : userData?.fullName?.split(" ")[0] || "there"
 
-  // Fetch user skills and challenges on component mount
+  // Fetch user data, skills, challenges, and application progress on component mount
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setLoading(true)
-        const token = localStorage.getItem("token")
-
-        if (!token) return
-
-        // Fetch user skills
-        const skillsResponse = await axios.get("http://localhost:5000/api/skills", {
-          headers: { "x-auth-token": token },
-        })
-
-        setSkills(skillsResponse.data.skills || [])
-
-        // If user has skills, fetch challenges
-        if (skillsResponse.data.skills && skillsResponse.data.skills.length > 0) {
-          const challengesResponse = await axios.get("http://localhost:5000/api/challenges", {
-            headers: { "x-auth-token": token },
-          })
-
-          setChallenges(challengesResponse.data.challenges || [])
-        }
-
-        setLoading(false)
-      } catch (err) {
-        console.error("Error fetching user data:", err)
-        setError("Failed to load your data. Please try again.")
-        setLoading(false)
-      }
-    }
-
     fetchUserData()
   }, [])
 
-  // Add a skill
-  const addSkill = () => {
-    if (currentSkill.trim() && skills.length < 16) {
-      setSkills([...skills, currentSkill.trim()])
-      setCurrentSkill("")
-    }
-  }
+  const fetchUserData = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      const token = localStorage.getItem("token")
 
-  // Remove a skill
-  const removeSkill = (index) => {
-    const newSkills = [...skills]
-    newSkills.splice(index, 1)
-    setSkills(newSkills)
-  }
+      if (!token) {
+        setError("You must be logged in to view this page")
+        setLoading(false)
+        return
+      }
 
-  // Handle key press in skills input
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      addSkill()
+      // Fetch current user data
+      try {
+        console.log("Fetching user data from:", `${API_BASE_URL}/auth/me`)
+        const userResponse = await axios.get(`${API_BASE_URL}/auth/me`, {
+          headers: { "x-auth-token": token },
+        })
+
+        if (userResponse.data && userResponse.data.user) {
+          setUserData(userResponse.data.user)
+          console.log("User data loaded:", userResponse.data.user)
+
+          // Update checklist based on user progress
+          if (userResponse.data.user.applicationProgress) {
+            const progress = userResponse.data.user.applicationProgress
+            const updatedChecklist = [...checklist]
+
+            // Check if code challenge is completed
+            if (progress.codeChallenge && progress.codeChallenge.completed) {
+              updatedChecklist[0].completed = true
+            }
+
+            // Check if video introduction is completed
+            if (progress.videoIntroduction && progress.videoIntroduction.completed) {
+              updatedChecklist[1].completed = true
+              setIntroductionCompleted(true)
+            }
+
+            // Check if profile is completed
+            if (progress.profile && progress.profile.completed) {
+              updatedChecklist[2].completed = true
+            }
+
+            setChecklist(updatedChecklist)
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching user data:", err.response?.data || err.message)
+        // Continue with other requests even if user data fails
+      }
+
+      // Fetch user skills
+      try {
+        console.log("Fetching user skills from:", `${API_BASE_URL}/skills`)
+        const skillsResponse = await axios.get(`${API_BASE_URL}/skills`, {
+          headers: { "x-auth-token": token },
+        })
+
+        const userSkills = skillsResponse.data.skills || []
+        setSkills(userSkills)
+        console.log("Skills loaded:", userSkills)
+
+        // If user has skills, fetch challenges
+        if (userSkills.length > 0) {
+          try {
+            console.log("Fetching challenges from:", `${API_BASE_URL}/challenges`)
+            const challengesResponse = await axios.get(`${API_BASE_URL}/challenges`, {
+              headers: { "x-auth-token": token },
+            })
+
+            setChallenges(challengesResponse.data.challenges || [])
+            console.log("Challenges loaded:", challengesResponse.data.challenges)
+          } catch (err) {
+            console.error("Error fetching challenges:", err.response?.data || err.message)
+            // Continue even if challenges fail to load
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching skills:", err.response?.data || err.message)
+        // Continue even if skills fail to load
+      }
+
+      setLoading(false)
+    } catch (err) {
+      console.error("Error in fetchUserData:", err.response?.data || err.message)
+      setError("Failed to load your data. Please try again.")
+      setLoading(false)
     }
   }
 
   // Save skills to the backend
-  const saveSkills = async () => {
+  const saveSkills = async (skillsToSave) => {
     try {
       setLoading(true)
       const token = localStorage.getItem("token")
@@ -96,21 +140,43 @@ const Overview = ({ userName = "", userRole = "" }) => {
         return
       }
 
-      await axios.post("http://localhost:5000/api/skills", { skills }, { headers: { "x-auth-token": token } })
+      console.log("Saving skills:", skillsToSave)
+      await axios.post(`${API_BASE_URL}/skills`, { skills: skillsToSave }, { headers: { "x-auth-token": token } })
 
       // After saving skills, fetch challenges
-      const challengesResponse = await axios.get("http://localhost:5000/api/challenges", {
+      const challengesResponse = await axios.get(`${API_BASE_URL}/challenges`, {
         headers: { "x-auth-token": token },
       })
 
       setChallenges(challengesResponse.data.challenges || [])
+      setSkills(skillsToSave)
       setLoading(false)
       setShowSkillsModal(false)
     } catch (err) {
-      console.error("Error saving skills:", err)
+      console.error("Error saving skills:", err.response?.data || err.message)
       setError("Failed to save skills. Please try again.")
       setLoading(false)
     }
+  }
+
+  // Handle introduction video submission
+  const handleIntroductionSubmit = (videoUrl) => {
+    // Update checklist
+    const updatedChecklist = [...checklist]
+    updatedChecklist[1].completed = true
+    setChecklist(updatedChecklist)
+    setIntroductionCompleted(true)
+  }
+
+  // Navigate to complete profile page
+  const navigateToCompleteProfile = () => {
+    navigate("/complete-profile")
+  }
+
+  // Retry loading data
+  const retryLoadData = () => {
+    setError("")
+    fetchUserData()
   }
 
   return (
@@ -130,7 +196,14 @@ const Overview = ({ userName = "", userRole = "" }) => {
                 </p>
 
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
+                    <div className="flex justify-between">
+                      <span>{error}</span>
+                      <button onClick={retryLoadData} className="text-red-700 font-medium hover:text-red-800 underline">
+                        Try again
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {/* Code Challenge Section */}
@@ -193,18 +266,19 @@ const Overview = ({ userName = "", userRole = "" }) => {
                   </div>
                 </div>
 
-                {/* Video Interview Section */}
+                {/* Introduction Video Section */}
                 <div className="mt-8 bg-white rounded-lg border border-gray-200 overflow-hidden">
                   <div className="p-6">
                     <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold text-indigo-900">Video Interview</h2>
+                      <h2 className="text-xl font-semibold text-indigo-900">Introduction Video</h2>
                       <div className="flex items-center bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm">
                         <Clock className="h-4 w-4 mr-1" />
                         ~15 mins
                       </div>
                     </div>
                     <p className="text-gray-600 mb-6">
-                      Help us get to know you! Tell us about yourself by recording a brief video introduction.
+                      Help us get to know you! Record a brief video introduction and answer a few questions about your
+                      background and skills.
                     </p>
 
                     <div className="flex items-center justify-between">
@@ -212,13 +286,15 @@ const Overview = ({ userName = "", userRole = "" }) => {
                         <div className="bg-indigo-100 p-3 rounded-full mr-3">
                           <Video className="h-5 w-5 text-indigo-700" />
                         </div>
-                        <span className="text-gray-700 font-medium">Mission Contributor</span>
+                        <span className="text-gray-700 font-medium">
+                          {introductionCompleted ? "Introduction Completed" : "Record Introduction"}
+                        </span>
                       </div>
                       <button
-                        onClick={() => setShowInterviewModal(true)}
+                        onClick={() => setShowIntroductionModal(true)}
                         className="flex items-center text-indigo-600 font-medium hover:text-indigo-800 transition-colors"
                       >
-                        Start Interview
+                        {introductionCompleted ? "View Introduction" : "Start Recording"}
                         <ChevronRight className="h-4 w-4 ml-1" />
                       </button>
                     </div>
@@ -247,13 +323,13 @@ const Overview = ({ userName = "", userRole = "" }) => {
                         </div>
                         <span className="text-gray-700 font-medium">Profile</span>
                       </div>
-                      <a
-                        href="/complete-profile"
+                      <button
+                        onClick={navigateToCompleteProfile}
                         className="flex items-center text-indigo-600 font-medium hover:text-indigo-800 transition-colors"
                       >
                         Complete Profile
                         <ChevronRight className="h-4 w-4 ml-1" />
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -290,121 +366,19 @@ const Overview = ({ userName = "", userRole = "" }) => {
       </div>
 
       {/* Skills Modal */}
-      {showSkillsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
-            {/* Modal header with gradient */}
-            <div className="h-2 bg-gradient-to-r from-indigo-700 via-purple-500 to-pink-500 rounded-t-lg"></div>
+      <SkillsModal
+        isOpen={showSkillsModal}
+        onClose={() => setShowSkillsModal(false)}
+        onSave={saveSkills}
+        initialSkills={skills}
+      />
 
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-indigo-900">Top Skills</h2>
-                <button onClick={() => setShowSkillsModal(false)} className="text-gray-500 hover:text-gray-700">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <p className="text-gray-600 mb-8">
-                List up to 16 of your most relevant skills — this can include programming languages, software, or any
-                other tech skill that sets you apart.
-              </p>
-
-              <div className="mb-6">
-                <label htmlFor="skills" className="block text-sm font-medium text-indigo-700 mb-2">
-                  Skills
-                </label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {skills.map((skill, index) => (
-                    <div key={index} className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full flex items-center">
-                      {skill}
-                      <button onClick={() => removeSkill(index)} className="ml-2 text-indigo-500 hover:text-indigo-700">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex">
-                  <input
-                    type="text"
-                    id="skills"
-                    value={currentSkill}
-                    onChange={(e) => setCurrentSkill(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type a skill..."
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    disabled={skills.length >= 16}
-                  />
-                </div>
-                {skills.length >= 16 && (
-                  <p className="text-amber-600 text-sm mt-2">You've reached the maximum of 16 skills.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 p-4 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowSkillsModal(false)}
-                className="px-4 py-2 text-indigo-600 font-medium hover:bg-indigo-50 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveSkills}
-                disabled={loading}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-75"
-              >
-                {loading ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Interview Modal */}
-      {showInterviewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
-            {/* Modal header with gradient */}
-            <div className="h-2 bg-gradient-to-r from-indigo-700 via-purple-500 to-pink-500 rounded-t-lg"></div>
-
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-indigo-900">Start Interview</h2>
-                <button onClick={() => setShowInterviewModal(false)} className="text-gray-500 hover:text-gray-700">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="mb-8">
-                <p className="text-gray-600 mb-6">You're about to start the interview portion of the application.</p>
-                <p className="text-gray-600">Click the following link to be redirected to the interview platform.</p>
-              </div>
-
-              <a
-                href="#"
-                className="inline-flex items-center text-indigo-600 font-medium hover:text-indigo-800 transition-colors"
-                onClick={(e) => {
-                  e.preventDefault()
-                  // Interview start logic would go here
-                  alert("This would redirect to the interview platform")
-                }}
-              >
-                Start Code Challenge
-                <ChevronRight className="h-5 w-5 ml-1" />
-              </a>
-            </div>
-
-            <div className="border-t border-gray-200 p-4 flex justify-end">
-              <button
-                onClick={() => setShowInterviewModal(false)}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Introduction Modal */}
+      <IntroductionModal
+        isOpen={showIntroductionModal}
+        onClose={() => setShowIntroductionModal(false)}
+        onSubmit={handleIntroductionSubmit}
+      />
 
       <Footer />
     </div>

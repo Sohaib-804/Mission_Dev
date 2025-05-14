@@ -3,6 +3,22 @@ const jwt = require("jsonwebtoken")
 const crypto = require("crypto")
 const { sendVerificationEmail, sendPasswordResetEmail } = require("../utils/emailService")
 const logger = require("../utils/logger")
+
+// Get current user
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password")
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" })
+    }
+    res.json({ user })
+  } catch (err) {
+    logger.error("Error getting current user:", err)
+    res.status(500).json({ msg: "Server error" })
+  }
+}
+
+// Generate a token
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" })
 }
@@ -57,6 +73,7 @@ exports.signup = async (req, res) => {
       emailVerificationDisabled: !emailServiceConfigured,
     })
   } catch (err) {
+    logger.error("Signup error:", err)
     res.status(500).json({ msg: err.message })
   }
 }
@@ -66,16 +83,19 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body
 
- 
+    logger.info(`Login attempt for email: ${email}`)
+
     const user = await User.findOne({ email })
     if (!user) {
-       return res.status(401).json({ msg: "Invalid email or password" })
+      logger.warn("User not found")
+      return res.status(401).json({ msg: "Invalid email or password" })
     }
 
     // Check password
     const isPasswordValid = await user.comparePassword(password)
     if (!isPasswordValid) {
-       return res.status(401).json({ msg: "Invalid email or password" })
+      logger.warn("Invalid password")
+      return res.status(401).json({ msg: "Invalid email or password" })
     }
 
     // Check if email verification is required
@@ -83,7 +103,8 @@ exports.login = async (req, res) => {
 
     // Check if email is verified (skip if email service is not configured)
     if (emailServiceConfigured && !user.isVerified) {
-       return res.status(403).json({
+      logger.warn("Email not verified")
+      return res.status(403).json({
         msg: "Please verify your email before logging in",
         isVerified: false,
         userId: user._id,
@@ -93,9 +114,10 @@ exports.login = async (req, res) => {
     // Generate token and send response
     const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" })
 
-     res.status(200).json({ user, token })
+    logger.info("Login successful")
+    res.status(200).json({ user, token })
   } catch (err) {
-    console.error("Login error:", err)
+    logger.error("Login error:", err)
     res.status(500).json({ msg: err.message })
   }
 }
@@ -117,7 +139,7 @@ exports.verifyEmail = async (req, res) => {
       verificationTokenExpires: { $gt: Date.now() },
     })
 
-    logger.debug("User found:", user ? "Yes" : "No")
+    logger.info("User found:", user ? "Yes" : "No")
 
     if (!user) {
       return res.status(400).json({ msg: "Invalid or expired verification token" })
@@ -129,10 +151,10 @@ exports.verifyEmail = async (req, res) => {
     user.verificationTokenExpires = undefined
     await user.save()
 
-    console.log(`User ${user.email} verified successfully`)
+    logger.info(`User ${user.email} verified successfully`)
     res.status(200).json({ msg: "Email verified successfully! You can now log in." })
   } catch (err) {
-    console.error("Verification error:", err)
+    logger.error("Verification error:", err)
     res.status(500).json({ msg: err.message })
   }
 }
@@ -167,6 +189,7 @@ exports.resendVerificationEmail = async (req, res) => {
 
     res.status(200).json({ msg: "Verification email sent! Please check your inbox." })
   } catch (err) {
+    logger.error("Resend verification email error:", err)
     res.status(500).json({ msg: err.message })
   }
 }
@@ -244,7 +267,7 @@ exports.resetPassword = async (req, res) => {
     logger.info(`Password reset successful for ${user.email}`)
     res.status(200).json({ msg: "Password has been reset successfully. You can now log in with your new password." })
   } catch (err) {
-    console.error("Reset password error:", err)
+    logger.error("Reset password error:", err)
     res.status(500).json({ msg: err.message })
   }
 }
@@ -265,7 +288,7 @@ exports.validateResetToken = async (req, res) => {
 
     res.status(200).json({ valid: true })
   } catch (err) {
-    console.error("Validate token error:", err)
+    logger.error("Validate token error:", err)
     res.status(500).json({ valid: false })
   }
 }

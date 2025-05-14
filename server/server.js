@@ -5,31 +5,24 @@ const dotenv = require("dotenv")
 const authRoutes = require("./routes/authRoutes")
 const skillRoutes = require("./routes/skillRoutes")
 const challengeRoutes = require("./routes/challengeRoutes")
-const interviewRoutes = require("./routes/interviewRoutes")
+const introductionRoutes = require("./routes/introductionRoutes")
+// const interviewRoutes = require("./routes/interviewRoutes")
 const logger = require("./utils/logger")
+
 // Load environment variables
 dotenv.config()
-
-// Add this near the top of your server.js file, after loading environment variables
-// but before connecting to MongoDB
-
-const { testEmailConfig } = require("./utils/emailService")
-
-// Test email configuration on server startup
-;(async () => {
-  try {
-    await testEmailConfig()
-  } catch (err) {
-    console.error("Email configuration test failed:", err)
-  }
-})()
 
 // Initialize Express app
 const app = express()
 
 // Middleware
-app.use(express.json())
-app.use(cors())
+app.use(express.json({ limit: "50mb" })) // Increase limit for video uploads
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173", // Allow your frontend URL
+    credentials: true,
+  }),
+)
 
 // Connect to MongoDB
 mongoose
@@ -37,20 +30,37 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => logger.info("MongoDB connected")) // Use logger instead of console.log
-  .catch((err) => logger.error("MongoDB connection error:", err)); // Use logger for errors
+  .then(() => logger.info("MongoDB connected"))
+  .catch((err) => logger.error("MongoDB connection error:", err))
 
-// Add this to your server.js file where you define your routes
-const testRoutes = require("./routes/testRoutes")
+// Test Cloudinary configuration
+const { testCloudinaryConfig } = require("./utils/cloudinaryConfig")
+testCloudinaryConfig()
+
+// Test email configuration
+const { testEmailConfig } = require("./utils/emailService")
+;(async () => {
+  try {
+    await testEmailConfig()
+  } catch (err) {
+    logger.error("Email configuration test failed:", err)
+  }
+})()
 
 // Routes
 app.use("/api/auth", authRoutes)
 app.use("/api/skills", skillRoutes)
 app.use("/api/challenges", challengeRoutes)
-app.use("/api/interviews", interviewRoutes)
+app.use("/api/introductions", introductionRoutes)
+// app.use("/api/interviews", interviewRoutes)
 
-// Add this with your other app.use statements
-app.use("/api/test", testRoutes)
+// Add test routes if they exist
+try {
+  const testRoutes = require("./routes/testRoutes")
+  app.use("/api/test", testRoutes)
+} catch (err) {
+  logger.info("Test routes not found, skipping")
+}
 
 // Default route
 app.get("/", (req, res) => {
@@ -59,4 +69,4 @@ app.get("/", (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+app.listen(PORT, () => logger.info(`Server running on port ${PORT}`))

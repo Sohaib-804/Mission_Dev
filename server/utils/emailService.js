@@ -92,7 +92,7 @@ exports.sendVerificationEmail = async (email, token, fullName) => {
   }
 
   try {
-    logger.email(`Attempting to send verification email to: ${email}`)
+    logger.info(`Attempting to send verification email to: ${email}`)
     const info = await transporter.sendMail(mailOptions)
     logger.info("Verification email sent successfully:", info.messageId)
     return true
