@@ -1,4 +1,5 @@
- import React from "react"
+import React from "react"
+
 import { useState, useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import "./index.css"
@@ -6,10 +7,11 @@ import Login from "./pages/Login"
 import Signup from "./pages/Signup"
 import VerifyEmail from "./pages/VerifyEmail"
 import ResendVerification from "./pages/ResendVerification"
-import ForgotPassword from "./pages/Forgotpassword"
+import ForgotPassword from "./pages/ForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
 import Overview from "./pages/Overview"
 import Navbar from "./components/Navbar"
+import ChallengePage from "./pages/ChallengePage"
 
 // Update the App component to manage the user's role
 function App() {
@@ -101,6 +103,10 @@ function App() {
                   <Navigate to="/login" />
                 )
               }
+            />
+            <Route
+              path="/challenge/:challengeId"
+              element={isAuthenticated ? <ChallengePage /> : <Navigate to="/login" />}
             />
             <Route path="/dashboard" element={<Navigate to="/overview" />} />
             {/* Changed default route to redirect to signup instead of login */}

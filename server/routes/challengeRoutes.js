@@ -12,4 +12,10 @@ router.get("/", challengeController.getChallengesForUser)
 // Get a specific challenge
 router.get("/:challengeId", challengeController.getChallengeById)
 
+// Submit a solution for a challenge
+router.post("/:challengeId/submit", challengeController.submitChallenge)
+
+// Mark a challenge as completed regardless of solution correctness
+router.post("/:challengeId/mark-completed", challengeController.markChallengeCompleted)
+
 module.exports = router

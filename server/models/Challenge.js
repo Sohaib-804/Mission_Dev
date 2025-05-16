@@ -1,5 +1,19 @@
 const mongoose = require("mongoose")
 
+const testCaseSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+  },
+  testCode: {
+    type: String,
+    required: true,
+  },
+  input: String,
+  expectedOutput: String,
+  keywords: [String], // For fallback evaluation
+})
+
 const challengeSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -43,6 +57,14 @@ const challengeSchema = new mongoose.Schema({
     type: [String],
     required: true,
   },
+  // Code templates for different languages
+  codeTemplate: {
+    type: Map,
+    of: String,
+    default: () => new Map(),
+  },
+  // Test cases for evaluating submissions
+  testCases: [testCaseSchema],
   // Whether this challenge is active
   isActive: {
     type: Boolean,

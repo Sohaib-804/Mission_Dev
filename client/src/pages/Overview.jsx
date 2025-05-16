@@ -1,11 +1,12 @@
- import React from "react"
- import { useState, useEffect } from "react"
+import React from "react"
+import { useState, useEffect } from "react"
 import { Clock, Plus, ChevronRight, Circle, CheckCircle, Video, FileText } from "lucide-react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
 import Footer from "../components/Footer"
 import IntroductionModal from "../components/introductionModal"
 import SkillsModal from "../components/SkillsModal"
+import { Link } from "react-router-dom"
 
 // API base URL - adjust this to match your backend
 const API_BASE_URL = "http://localhost:5000/api"
@@ -233,12 +234,12 @@ const Overview = ({ userName = "", userRole = "" }) => {
                             <p className="text-gray-600 text-sm mt-1">{challenge.description}</p>
                             <div className="mt-2 flex justify-between items-center">
                               <span className="text-xs text-gray-500">Difficulty: {challenge.difficulty}</span>
-                              <a
-                                href={`/challenge/${challenge._id}`}
+                              <Link
+                                to={`/challenge/${challenge._id}`}
                                 className="text-indigo-600 text-sm font-medium hover:text-indigo-800"
                               >
-                                Start Challenge
-                              </a>
+                                {challenge.isCompleted ? "View Submission" : "Start Challenge"}
+                              </Link>
                             </div>
                           </div>
                         ))}

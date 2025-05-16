@@ -87,25 +87,25 @@ const Navbar = ({ isAuthenticated, onLogout, userName = "" }) => {
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
-                  className="flex items-center text-sm rounded-full focus:outline-none"
+                  className="flex items-center text-white text-sm rounded-full focus:outline-none"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
-                  <span className="mr-2 text-gray-700">{displayName}</span>
+                  <span className="mr-2 text-white font-medium">{displayName}</span>
                   <ChevronDown size={16} className={`transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
-                    <Link to="/overview" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <Link to="/overview" className="block px-4 py-2 text-sm text-blue-900 hover:bg-gray-100">
                       Overview
                     </Link>
-                    <Link to="/complete-profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <Link to="/complete-profile" className="block px-4 py-2 text-sm text-blue-900 hover:bg-gray-100">
                       Complete Profile
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-sm text-blue-900 hover:bg-gray-100"
                     >
                       Log out
                     </button>
@@ -157,10 +157,10 @@ const Navbar = ({ isAuthenticated, onLogout, userName = "" }) => {
             <div className="pt-4 pb-3 border-t border-gray-200">
               <div className="flex items-center px-4">
                 <div className="flex-shrink-0">
-                  <User className="h-10 w-10 rounded-full bg-gray-100 p-2" />
+                  <User className="h-10 w-10  rounded-full bg-gray-100 p-2" />
                 </div>
                 <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800">{displayName}</div>
+                  <div className="text-base font-medium text-white">{displayName}</div>
                 </div>
               </div>
               <div className="mt-3 space-y-1">
